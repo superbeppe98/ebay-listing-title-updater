@@ -1,4 +1,3 @@
-import time
 from ebaysdk.trading import Connection as Trading
 from ebaysdk.exception import ConnectionError
 from pprint import pprint
@@ -23,18 +22,26 @@ api = Trading(
 with open('url.txt', 'r') as f:
     urls = f.read().splitlines()
 
-# Initialize error count and total count to 0
+# Initialize error count, total count, empty URL count, and invalid URL count to 0
 total_count = 0
 error_count = 0
+empty_url_count = 0
+invalid_url_count = 0
 
 # For each URL, extract the item ID and search for the item using the eBay Trading API
 for url in urls:
     if not url:
         print("Empty URL found, skipping...")
+        empty_url_count += 1  # Increment empty URL count
         continue  # Move on to next URL
+    if not re.match(r'^https?://(www\.)?ebay\.it/.*', url):
+        print(f"Skipping invalid URL: {url}")
+        invalid_url_count += 1  # Increment invalid URL count
+        continue
     item_id = url.split('/')[-1].split('?')[0]  # Extract item ID from URL
     # Rest of the code for processing the URL goes here
     total_count += 1  # Increment total count
+
     item_id = url.split('/')[-1].split('?')[0]  # Extract item ID from URL
     response = api.execute('GetItem', {'ItemID': item_id})
     item_dict = response.dict()['Item']
@@ -73,6 +80,8 @@ for url in urls:
         error_count += 1  # Increment error count
         print('Connection Error:', e)
 
-# Print total count and error count
+# Print total count, empty URL count, invalid URL count, and error count
 print('Total listings processed:', total_count)
+print('Empty URLs found:', empty_url_count)
+print('Invalid URLs found:', invalid_url_count)
 print('Listings with update errors:', error_count)
