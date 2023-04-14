@@ -1,4 +1,6 @@
+import time
 from ebaysdk.trading import Connection as Trading
+from ebaysdk.exception import ConnectionError
 from pprint import pprint
 import re
 import os
@@ -21,6 +23,9 @@ api = Trading(
 with open('url.txt', 'r') as f:
     urls = f.read().splitlines()
 
+# Initialize a counter variable to zero
+failed_updates = 0
+
 # For each URL, extract the item ID and search for the item using the eBay Trading API
 for url in urls:
     item_id = url.split('/')[-1].split('?')[0]  # Extract item ID from URL
@@ -37,17 +42,29 @@ for url in urls:
     item_title = item_title.lstrip()  # Remove leading whitespace
     print("Modified title: " + item_title)
 
-    # Revise the listing with the modified title
-    response = api.execute('ReviseFixedPriceItem', {
-        'Item': {
-            'ItemID': item_id,
-            'Title': item_title,
-        }
-    })
+    try:
+        # Revise the listing with the modified title
+        response = api.execute('ReviseFixedPriceItem', {
+            'Item': {
+                'ItemID': item_id,
+                'Title': item_title,
+            }
+        })
 
-    # Check if the revision was successful
-    if response.reply.Ack == 'Success':
-        print('The listing title has been successfully updated!')
-    else:
-        print('Error updating the listing title:',
-              response.reply.ErrorMessage.Error.Message)
+        # Check if the revision was successful
+        if response.reply.Ack == 'Success':
+            print('The listing title has been successfully updated!')
+        else:
+            print('Error updating the listing title:',
+                  response.reply.ErrorMessage.Error.Message)
+            # Increment the counter for failed updates
+            failed_updates += 1
+
+    except ConnectionError as e:
+        # Handle the case where it is not possible to connect to the eBay API
+        print('Error connecting to eBay API:', str(e))
+        # Increment the counter for failed updates
+        failed_updates += 1
+
+# Print the number of failed updates
+print('Failed updates:', failed_updates)
