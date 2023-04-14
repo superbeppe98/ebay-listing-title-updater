@@ -29,6 +29,11 @@ error_count = 0
 
 # For each URL, extract the item ID and search for the item using the eBay Trading API
 for url in urls:
+    if not url:
+        print("Empty URL found, skipping...")
+        continue  # Move on to next URL
+    item_id = url.split('/')[-1].split('?')[0]  # Extract item ID from URL
+    # Rest of the code for processing the URL goes here
     total_count += 1  # Increment total count
     item_id = url.split('/')[-1].split('?')[0]  # Extract item ID from URL
     response = api.execute('GetItem', {'ItemID': item_id})
