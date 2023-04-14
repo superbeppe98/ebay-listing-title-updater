@@ -23,11 +23,13 @@ api = Trading(
 with open('url.txt', 'r') as f:
     urls = f.read().splitlines()
 
-# Initialize a counter variable to zero
-failed_updates = 0
+# Initialize error count and total count to 0
+total_count = 0
+error_count = 0
 
 # For each URL, extract the item ID and search for the item using the eBay Trading API
 for url in urls:
+    total_count += 1  # Increment total count
     item_id = url.split('/')[-1].split('?')[0]  # Extract item ID from URL
     response = api.execute('GetItem', {'ItemID': item_id})
     item_dict = response.dict()['Item']
@@ -42,6 +44,10 @@ for url in urls:
     item_title = item_title.lstrip()  # Remove leading whitespace
     print("Modified title: " + item_title)
 
+    if item_title == item_dict['Title']:
+        print('Modified title is the same as the original. Skipping...')
+        continue
+
     try:
         # Revise the listing with the modified title
         response = api.execute('ReviseFixedPriceItem', {
@@ -55,16 +61,13 @@ for url in urls:
         if response.reply.Ack == 'Success':
             print('The listing title has been successfully updated!')
         else:
+            error_count += 1  # Increment error count
             print('Error updating the listing title:',
                   response.reply.ErrorMessage.Error.Message)
-            # Increment the counter for failed updates
-            failed_updates += 1
-
     except ConnectionError as e:
-        # Handle the case where it is not possible to connect to the eBay API
-        print('Error connecting to eBay API:', str(e))
-        # Increment the counter for failed updates
-        failed_updates += 1
+        error_count += 1  # Increment error count
+        print('Connection Error:', e)
 
-# Print the number of failed updates
-print('Failed updates:', failed_updates)
+# Print total count and error count
+print('Total listings processed:', total_count)
+print('Listings with update errors:', error_count)
