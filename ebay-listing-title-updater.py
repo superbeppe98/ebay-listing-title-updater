@@ -4,6 +4,7 @@ from pprint import pprint
 import re
 import os
 from dotenv import load_dotenv
+import json
 
 # Load environment variables from .env file
 load_dotenv()
@@ -18,9 +19,49 @@ api = Trading(
     config_file=None
 )
 
+# Retrieve information about all active listings
+all_listings = []
+while True:
+    response = api.execute('GetMyeBaySelling', {
+        'ActiveList': {
+            'Include': True,
+            'Pagination': {
+                'PageNumber': 1,
+                'EntriesPerPage': 200
+            }
+        }
+    })
+
+    # Check if there are any active listings
+    if response.reply.ActiveList is None:
+        break
+
+    # Add listings to the all_listings list
+    all_listings.extend(response.reply.ActiveList.ItemArray.Item)
+
+    # Check if there are more pages of results to retrieve
+    if int(response.reply.ActiveList.PaginationResult.TotalNumberOfPages) > page_number:
+        page_number += 1
+    else:
+        break
+
+# Save all active listings to a JSON file
+active_listings = []
+for item in all_listings:
+    active_listings.append({
+        'title': item.Title,
+        'item_id': item.ItemID
+    })
+
+with open('active_listings.json', 'w') as f:
+    json.dump(active_listings, f)
+
 # Open file containing URLs of eBay listings to be updated
 with open('url.txt', 'r') as f:
     urls = f.read().splitlines()
+
+with open('active_listing.json', 'r') as f:
+    active_listing = json.load(f)
 
 # Initialize error count, total count, empty URL count, and invalid URL count to 0
 total_count = 0
