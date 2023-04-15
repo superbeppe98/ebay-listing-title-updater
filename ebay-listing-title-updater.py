@@ -4,6 +4,7 @@ from pprint import pprint
 import re
 import os
 from dotenv import load_dotenv
+import json
 
 # Load environment variables from .env file
 load_dotenv()
@@ -18,46 +19,97 @@ api = Trading(
     config_file=None
 )
 
+# Initialize page number and entries per page
+page_number = 1
+entries_per_page = 200
+
+# Retrieve information about all active listings
+all_listings = []
+while True:
+    response = api.execute('GetMyeBaySelling', {
+        'ActiveList': {
+            'Include': True,
+            'Pagination': {
+                'PageNumber': page_number,
+                'EntriesPerPage': entries_per_page
+            }
+        }
+    })
+
+    # Check if there are any active listings
+    if response.reply.ActiveList is None:
+        break
+
+    # Add listings to the all_listings list
+    all_listings.extend(response.reply.ActiveList.ItemArray.Item)
+
+    # Check if there are more pages of results to retrieve
+    if int(response.reply.ActiveList.PaginationResult.TotalNumberOfPages) > page_number:
+        page_number += 1
+    else:
+        break
+
+# Save all active listings to a JSON file
+active_listings = []
+for item in all_listings:
+    active_listings.append({
+        'title': item.Title,
+        'item_id': item.ItemID
+    })
+
+with open('active_listings.json', 'w') as f:
+    json.dump(active_listings, f)
+
 # Open file containing URLs of eBay listings to be updated
 with open('url.txt', 'r') as f:
     urls = f.read().splitlines()
+
+with open('active_listings.json', 'r') as f:
+    data = json.load(f)
 
 # Initialize error count, total count, empty URL count, and invalid URL count to 0
 total_count = 0
 error_count = 0
 empty_url_count = 0
-invalid_url_count = 0
 
-# For each URL, extract the item ID and search for the item using the eBay Trading API
+# For each URL in the URL list, search for the corresponding item ID
 for url in urls:
     if not url:
-        print("Empty URL found, skipping...")
-        empty_url_count += 1  # Increment empty URL count
-        continue  # Move on to next URL
-    if not re.match(r'^https?://(www\.)?ebay\.it/.*', url):
-        print(f"Skipping invalid URL: {url}")
-        invalid_url_count += 1  # Increment invalid URL count
+        # Check if URL is empty
+        empty_url_count += 1
         continue
-    item_id = url.split('/')[-1].split('?')[0]  # Extract item ID from URL
-    # Rest of the code for processing the URL goes here
-    total_count += 1  # Increment total count
 
     item_id = url.split('/')[-1].split('?')[0]  # Extract item ID from URL
-    response = api.execute('GetItem', {'ItemID': item_id})
-    item_dict = response.dict()['Item']
-    item_title = item_dict['Title']
 
-    # Print original and modified listing title
-    print("Original title: " + item_title)
-    # Remove leading/trailing whitespace
-    item_title = item_dict['Title'].strip()
-    item_title = re.sub(r'\s+', ' ', item_title)  # Remove extra whitespace
-    item_title = item_title.title()  # Capitalize first letter of each word
-    item_title = item_title.lstrip()  # Remove leading whitespace
-    print("Modified title: " + item_title)
+    # Search for the current item ID in the item data
+    item_found = False
+    # Flag to indicate whether a matching item has been found
+    for item in data:
+        if item_id == item['item_id']:
+            item_found = True
+            break
 
-    if item_title == item_dict['Title']:
-        print('Modified title is the same as the original. Skipping...')
+    if not item_found:
+        error_count += 1
+        # Increment error count if matching item is not found
+        continue
+
+    # Extract the modified title for the current item
+    item_title = item['title']
+    item_title_modified = item_title.strip()  # Remove leading/trailing whitespace
+    item_title_modified = re.sub(
+        r'\s+', ' ', item_title_modified)  # Remove extra whitespace
+    item_title_modified = item_title_modified.replace(
+        "&", "and")  # Replace '&' with 'and'
+    # Capitalize first letter of each word
+    item_title_modified = item_title_modified.title()
+    item_title_modified = item_title_modified.lstrip()  # Remove leading whitespace
+
+    # Increment the total count
+    total_count += 1
+
+    # Check if the modified title is the same as the original
+    if item_title == item_title_modified:
         continue
 
     try:
@@ -65,7 +117,7 @@ for url in urls:
         response = api.execute('ReviseFixedPriceItem', {
             'Item': {
                 'ItemID': item_id,
-                'Title': item_title,
+                'Title': item_title_modified,
             }
         })
 
@@ -73,15 +125,16 @@ for url in urls:
         if response.reply.Ack == 'Success':
             print('The listing title has been successfully updated!')
         else:
-            error_count += 1  # Increment error count
+            error_count += 1
             print('Error updating the listing title:',
                   response.reply.ErrorMessage.Error.Message)
     except ConnectionError as e:
-        error_count += 1  # Increment error count
+        error_count += 1
+        print(item_title)
         print('Connection Error:', e)
 
-# Print total count, empty URL count, invalid URL count, and error count
-print('Total listings processed:', total_count)
-print('Empty URLs found:', empty_url_count)
-print('Invalid URLs found:', invalid_url_count)
-print('Listings with update errors:', error_count)
+print(f"Items processed: {total_count}")
+print(f"Total errors encountered: {error_count}")
+print(f"Total empty URLs encountered: {empty_url_count}")
+print(
+    f"Total items processed, including errors and empty URLs: {total_count+error_count+empty_url_count}")
