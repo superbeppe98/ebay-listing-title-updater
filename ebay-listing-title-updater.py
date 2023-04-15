@@ -90,6 +90,7 @@ for url in urls:
             break
 
     if not item_found:
+        print(f"Item with ID {item_id} not found")
         error_count += 1
         # Increment error count if matching item is not found
         continue
@@ -100,7 +101,7 @@ for url in urls:
     item_title_modified = re.sub(
         r'\s+', ' ', item_title_modified)  # Remove extra whitespace
     item_title_modified = item_title_modified.replace(
-        "&", "and")  # Replace '&' with 'and'
+        "&", "e")  # Replace '&' with 'e'
     # Capitalize first letter of each word
     item_title_modified = item_title_modified.title()
     item_title_modified = item_title_modified.lstrip()  # Remove leading whitespace
