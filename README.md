@@ -12,10 +12,10 @@ To use the eBay Listing Title Modifier, you need to create a text file named "ur
 
 Before running the program, you need to set up your eBay Trading API credentials in a .env file located in the same directory as the program. The .env file should contain the following variables:
 
-EBAY_APP_ID: Your eBay Trading API App ID
-EBAY_DEV_ID: Your eBay Trading API Dev ID
-EBAY_CERT_ID: Your eBay Trading API Cert ID
-EBAY_TOKEN: Your eBay Trading API token
+* EBAY_APP_ID: Your eBay Trading API App ID
+* EBAY_DEV_ID: Your eBay Trading API Dev ID
+* EBAY_CERT_ID: Your eBay Trading API Cert ID
+* EBAY_TOKEN: Your eBay Trading API token
 
 Once you have the input file and API credentials ready, you can run the program by navigating to the directory where the program is stored and running the following command:
 ```shell
